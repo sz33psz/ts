@@ -1,12 +1,21 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"os"
+	"time"
+
+	"github.com/sz33psz/ts"
 )
 
 func main() {
 	args := os.Args[1:]
-	millis := flag.Bool("m", false, "milliseconds mode")
-	flag.Parse()
+
+	currentTime := time.Now().Unix()
+	for _, arg := range args {
+		if chg, err := ts.NewChange(arg); err == nil {
+			currentTime = chg.Apply(currentTime)
+		}
+	}
+	fmt.Printf("%v\n", currentTime)
 }

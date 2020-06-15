@@ -9,37 +9,52 @@ func TestChangeParsing(t *testing.T) {
 	testCases := []struct {
 		desc    string
 		str     string
-		correct change
+		correct Change
 	}{
 		{
-			desc:    "only seconds",
+			desc:    "only seconds, override",
 			str:     "45s",
-			correct: NewSecondChange(45, true),
+			correct: newSecondChange(45, true),
 		},
 		{
-			desc:    "only seconds, negative",
+			desc:    "only seconds, adjust, negative",
 			str:     "-45s",
-			correct: NewSecondChange(-45, false),
+			correct: newSecondChange(-45, false),
 		},
 		{
-			desc:    "seconds and minutes",
+			desc:    "seconds and minutes, override",
 			str:     "15m10s",
-			correct: NewMinuteChange(15, 10, true),
+			correct: newMinuteChange(15, 10, true),
 		},
 		{
-			desc:    "seconds and minutes, negative",
+			desc:    "seconds and minutes, adjust, negative",
 			str:     "-15m10s",
-			correct: NewMinuteChange(-15, -10, false),
+			correct: newMinuteChange(-15, -10, false),
 		},
 		{
-			desc:    "hours",
+			desc:    "hours, adjust",
 			str:     "+3h",
-			correct: NewHourChange(3, 0, 0, false),
+			correct: newHourChange(3, 0, 0, false),
 		},
 		{
-			desc:    "hours, seconds and minutes, negative",
+			desc:    "hours, seconds and minutes, adjust, negative",
 			str:     "-1h15m10s",
-			correct: NewHourChange(-1, -15, -10, false),
+			correct: newHourChange(-1, -15, -10, false),
+		},
+		{
+			desc:    "months and seconds, adjust",
+			str:     "+4M10s",
+			correct: newMonthChange(4, 0, 0, 0, 10, false),
+		},
+		{
+			desc:    "years and minutes, override",
+			str:     "3y10m",
+			correct: newYearChange(3, 0, 0, 0, 10, 0, true),
+		},
+		{
+			desc:    "year, override",
+			str:     "1970y",
+			correct: newYearChange(1970, 0, 0, 0, 0, 0, true),
 		},
 	}
 	for _, tC := range testCases {
@@ -53,7 +68,7 @@ func TestChangeParsing(t *testing.T) {
 	}
 }
 
-func compareChanges(t *testing.T, expected *change, got *change) {
+func compareChanges(t *testing.T, expected *Change, got *Change) {
 	if expected.existFlag != got.existFlag {
 		t.Errorf("Invalid exists flag. Expected: %v, got: %v", expected.existFlag, got.existFlag)
 	}
@@ -84,43 +99,48 @@ func TestOverrides(t *testing.T) {
 	var timestamp int64 = time.Date(2020, 8, 20, 12, 34, 45, 0, time.UTC).Unix() //2020-08-20 12:34:45
 	testCases := []struct {
 		desc     string
-		override change
+		override Change
 		correct  int64
 	}{
 		{
 			desc:     "Override seconds",
-			override: NewSecondChange(10, true),
+			override: newSecondChange(10, true),
 			correct:  time.Date(2020, 8, 20, 12, 34, 10, 0, time.UTC).Unix(),
 		},
 		{
 			desc:     "Override minutes",
-			override: NewMinuteChange(10, 30, true),
+			override: newMinuteChange(10, 30, true),
 			correct:  time.Date(2020, 8, 20, 12, 10, 30, 0, time.UTC).Unix(),
 		},
 		{
 			desc:     "Override hours",
-			override: NewHourChange(8, 15, 55, true),
+			override: newHourChange(8, 15, 55, true),
 			correct:  time.Date(2020, 8, 20, 8, 15, 55, 0, time.UTC).Unix(),
 		},
 		{
 			desc:     "Override days",
-			override: NewDayChange(12, 22, 45, 10, true),
+			override: newDayChange(12, 22, 45, 10, true),
 			correct:  time.Date(2020, 8, 12, 22, 45, 10, 0, time.UTC).Unix(),
 		},
 		{
 			desc:     "Override months",
-			override: NewMonthChange(3, 1, 1, 2, 3, true),
+			override: newMonthChange(3, 1, 1, 2, 3, true),
 			correct:  time.Date(2020, 3, 1, 1, 2, 3, 0, time.UTC).Unix(),
 		},
 		{
 			desc:     "Override years",
-			override: NewYearChange(2019, 12, 25, 17, 1, 45, true),
+			override: newYearChange(2019, 12, 25, 17, 1, 45, true),
 			correct:  time.Date(2019, 12, 25, 17, 1, 45, 0, time.UTC).Unix(),
+		},
+		{
+			desc:     "Override years",
+			override: newYearChange(1970, 0, 0, 0, 0, 0, true),
+			correct:  0,
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			calculated := tC.override.apply(timestamp)
+			calculated := tC.override.Apply(timestamp)
 			if tC.correct != calculated {
 				t.Errorf("Error in %v. Expected %v, got %v", tC.desc, tC.correct, calculated)
 			}
@@ -132,43 +152,43 @@ func TestAdjust(t *testing.T) {
 	var timestamp int64 = time.Date(2020, 8, 20, 12, 34, 45, 0, time.UTC).Unix() //2020-08-20 12:34:45
 	testCases := []struct {
 		desc     string
-		override change
+		override Change
 		correct  int64
 	}{
 		{
 			desc:     "Adjust seconds",
-			override: NewSecondChange(-10, false),
+			override: newSecondChange(-10, false),
 			correct:  time.Date(2020, 8, 20, 12, 34, 35, 0, time.UTC).Unix(),
 		},
 		{
 			desc:     "Adjust minutes",
-			override: NewMinuteChange(10, 30, false),
+			override: newMinuteChange(10, 30, false),
 			correct:  time.Date(2020, 8, 20, 12, 45, 15, 0, time.UTC).Unix(),
 		},
 		{
 			desc:     "Adjust hours",
-			override: NewHourChange(-1, -10, -10, false),
+			override: newHourChange(-1, -10, -10, false),
 			correct:  time.Date(2020, 8, 20, 11, 24, 35, 0, time.UTC).Unix(),
 		},
 		{
 			desc:     "Adjust days",
-			override: NewDayChange(1, 5, 5, 5, false),
+			override: newDayChange(1, 5, 5, 5, false),
 			correct:  time.Date(2020, 8, 21, 17, 39, 50, 0, time.UTC).Unix(),
 		},
 		{
 			desc:     "Adjust months",
-			override: NewMonthChange(-1, -1, -1, -2, -3, false),
+			override: newMonthChange(-1, -1, -1, -2, -3, false),
 			correct:  time.Date(2020, 7, 19, 11, 32, 42, 0, time.UTC).Unix(),
 		},
 		{
 			desc:     "Adjust years",
-			override: NewYearChange(-5, 1, 1, 1, 1, 1, false),
+			override: newYearChange(-5, 1, 1, 1, 1, 1, false),
 			correct:  time.Date(2015, 9, 21, 13, 35, 46, 0, time.UTC).Unix(),
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			calculated := tC.override.apply(timestamp)
+			calculated := tC.override.Apply(timestamp)
 			if tC.correct != calculated {
 				t.Errorf("Error in %v. Expected %v, got %v", tC.desc, tC.correct, calculated)
 			}

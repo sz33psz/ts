@@ -30,7 +30,7 @@ var (
 	ErrChangeSyntax = errors.New("invalid time change syntax")
 )
 
-type change struct {
+type Change struct {
 	year      int
 	month     int
 	day       int
@@ -41,7 +41,7 @@ type change struct {
 	override  bool
 }
 
-func (chg *change) apply(t int64) int64 {
+func (chg *Change) Apply(t int64) int64 {
 	if chg.existFlag == 0 {
 		return t
 	}
@@ -78,6 +78,9 @@ func (chg *change) apply(t int64) int64 {
 
 	if (chg.existFlag>>Day)&1 == 1 {
 		if chg.override {
+			if chg.day < 1 {
+				chg.day = 1
+			}
 			res = res.SetDate(chg.day)
 		} else {
 			res = res.Add(chg.day, "days")
@@ -86,6 +89,9 @@ func (chg *change) apply(t int64) int64 {
 
 	if (chg.existFlag>>Month)&1 == 1 {
 		if chg.override {
+			if chg.month < 1 {
+				chg.month = 1
+			}
 			res = res.SetMonth(chg.month)
 		} else {
 			res = res.Add(chg.month, "months")
@@ -103,7 +109,7 @@ func (chg *change) apply(t int64) int64 {
 	return res.ToUnix()
 }
 
-func NewChange(s string) (*change, error) {
+func NewChange(s string) (*Change, error) {
 	if len(s) < 2 { //one for number, one for unit
 		return nil, ErrNotChange
 	}
@@ -119,7 +125,7 @@ func NewChange(s string) (*change, error) {
 		plus = false
 	}
 
-	chg := change{}
+	chg := Change{}
 
 	if isOverride {
 		chg.override = true
@@ -148,7 +154,7 @@ func NewChange(s string) (*change, error) {
 	return &chg, nil
 }
 
-func with(change *change, quantity int, unit rune) {
+func with(change *Change, quantity int, unit rune) {
 	intUnit := 0
 	switch unit {
 	case 's':
@@ -176,17 +182,17 @@ func with(change *change, quantity int, unit rune) {
 	}
 }
 
-func NewSecondChange(s int, override bool) change {
-	return change{
+func newSecondChange(s int, override bool) Change {
+	return Change{
 		second:    s,
 		existFlag: 1 << Second,
 		override:  override,
 	}
 }
 
-func NewMinuteChange(m int, s int, override bool) change {
+func newMinuteChange(m int, s int, override bool) Change {
 
-	return change{
+	return Change{
 		minute:    m,
 		second:    s,
 		existFlag: 1<<Second | 1<<Minute,
@@ -194,9 +200,9 @@ func NewMinuteChange(m int, s int, override bool) change {
 	}
 }
 
-func NewHourChange(h int, m int, s int, override bool) change {
+func newHourChange(h int, m int, s int, override bool) Change {
 
-	return change{
+	return Change{
 		hour:      h,
 		minute:    m,
 		second:    s,
@@ -205,9 +211,9 @@ func NewHourChange(h int, m int, s int, override bool) change {
 	}
 }
 
-func NewDayChange(d int, h int, m int, s int, override bool) change {
+func newDayChange(d int, h int, m int, s int, override bool) Change {
 
-	return change{
+	return Change{
 		day:       d,
 		hour:      h,
 		minute:    m,
@@ -217,8 +223,8 @@ func NewDayChange(d int, h int, m int, s int, override bool) change {
 	}
 }
 
-func NewMonthChange(M int, d int, h int, m int, s int, override bool) change {
-	return change{
+func newMonthChange(M int, d int, h int, m int, s int, override bool) Change {
+	return Change{
 		month:     M,
 		day:       d,
 		hour:      h,
@@ -229,8 +235,8 @@ func NewMonthChange(M int, d int, h int, m int, s int, override bool) change {
 	}
 }
 
-func NewYearChange(y int, M int, d int, h int, m int, s int, override bool) change {
-	return change{
+func newYearChange(y int, M int, d int, h int, m int, s int, override bool) Change {
+	return Change{
 		year:      y,
 		month:     M,
 		day:       d,
